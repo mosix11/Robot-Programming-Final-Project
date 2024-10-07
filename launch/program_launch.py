@@ -14,10 +14,16 @@ def generate_launch_description():
     #     'your_map_server_launch_file.launch.py'
     # )
     map_server_launch_file = './launch/map_server_launcher.py'
+    amcl_launch_file = './launch/amcl_launch.py'
 
     # Include the map server launch file
     map_server_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(map_server_launch_file)
+    )
+    
+    # Include the map server launch file
+    amcl_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(amcl_launch_file)
     )
 
     # Path to the turtlebot3_fake_node launch file
@@ -32,12 +38,19 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(turtlebot_launch_file)
     )
 
-    # Static transform publisher node
+    # Static transform publisher node for adding odom to map
     static_transform_publisher_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
     )
+    
+    # Static transform publisher node for adding laser scanner's base_scan to base_footprint
+    # static_transform_publisher_node2 = Node(
+    #     package='tf2_ros',
+    #     executable='static_transform_publisher',
+    #     arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_scan']
+    # )
     
     # Delay turtlebot launch by 4 seconds (2 seconds after static transform publisher)
     delayed_mapserver_launch = TimerAction(
@@ -50,12 +63,24 @@ def generate_launch_description():
         period=4.5,
         actions=[static_transform_publisher_node]
     )
+    
+    delayed_amcl_launch = TimerAction(
+        period=6.0,
+        actions=[amcl_launch]
+    )
+    
+    # delayed_static_transform2 = TimerAction(
+    #     period=6.0,
+    #     actions=[static_transform_publisher_node2]
+    # )
 
 
 
     # Combine all launch descriptions and nodes
     return LaunchDescription([
         turtlebot_launch,
+        # delayed_static_transform2,
         delayed_mapserver_launch,
         delayed_static_transform,
+        # delayed_amcl_launch
     ])
