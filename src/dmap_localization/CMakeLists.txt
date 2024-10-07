@@ -6,56 +6,19 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-# include_directories(/usr/include/eigen3)
-find_package(Eigen3 REQUIRED)
-
-
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
-# find_package(pcl_conversions REQUIRED)
-# find_package(PCL REQUIRED COMPONENTS common io registration)
-# Include directories
-include_directories(
-  # ${PCL_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
-)
 
-add_executable(dmap_localizer src/dmap_localizer.cpp)
-# add_executable(robot_relocator src/robot_relocator.cpp)
-# target_link_libraries(dmap_localization_node
-#   ${PCL_LIBRARIES}
-# )
+add_executable(dmap_localization_node ${PROJECT_SOURCE_DIR}/src/dmap_localization_node.cpp)
+target_include_directories(dmap_localization_node PUBLIC  ${PROJECT_SOURCE_DIR}/include/)
 
-ament_target_dependencies(dmap_localizer
-  rclcpp
-  sensor_msgs
-  nav_msgs
-  geometry_msgs
-  tf2
-  tf2_ros
-  # pcl_conversions
-  # PCL
-  Eigen3
-)
+ament_target_dependencies(dmap_localization_node rclcpp sensor_msgs nav_msgs tf2_ros)
 
-# ament_target_dependencies(robot_relocator
-#   rclcpp
-#   geometry_msgs
-#   tf2_ros
-# )
-
-install(TARGETS dmap_localizer
-  DESTINATION lib/${PROJECT_NAME})
-
-# install(TARGETS
-#   robot_relocator
-#   DESTINATION lib/${PROJECT_NAME})
-
+install(TARGETS dmap_localization_node DESTINATION lib/${PROJECT_NAME})
 
 
 if(BUILD_TESTING)

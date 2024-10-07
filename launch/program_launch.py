@@ -8,23 +8,23 @@ import os
 
 def generate_launch_description():
     # Path to the map server launch file
-    # map_server_launch_file = os.path.join(
-    #     get_package_share_directory('your_map_server_package'),
-    #     'launch',
-    #     'your_map_server_launch_file.launch.py'
-    # )
-    map_server_launch_file = './launch/map_server_launcher.py'
-    amcl_launch_file = './launch/amcl_launch.py'
+    map_server_launch_file = os.path.join(
+        os.getcwd(),  # Replace with the correct path to your config
+        'launch',
+        'map_server_launcher.py'
+    )
+
+    # amcl_launch_file = './launch/amcl_launch.py'
 
     # Include the map server launch file
     map_server_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(map_server_launch_file)
     )
     
-    # Include the map server launch file
-    amcl_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(amcl_launch_file)
-    )
+
+    # amcl_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(amcl_launch_file)
+    # )
 
     # Path to the turtlebot3_fake_node launch file
     turtlebot_launch_file = os.path.join(
@@ -64,10 +64,10 @@ def generate_launch_description():
         actions=[static_transform_publisher_node]
     )
     
-    delayed_amcl_launch = TimerAction(
-        period=6.0,
-        actions=[amcl_launch]
-    )
+    # delayed_amcl_launch = TimerAction(
+    #     period=6.0,
+    #     actions=[amcl_launch]
+    # )
     
     # delayed_static_transform2 = TimerAction(
     #     period=6.0,
