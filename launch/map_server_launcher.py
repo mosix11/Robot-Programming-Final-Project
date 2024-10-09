@@ -9,6 +9,7 @@ def generate_launch_description():
             name='map_server',
             output='screen',
             parameters=[{'use_sim_time': True, 'yaml_filename': './src/files/diag_map.yaml'}],
+            # parameters=[{'use_sim_time': True, 'yaml_filename': './src/files/map2.yaml'}],
             namespace='',
         ),
         # Lifecycle manager to automatically activate the map_server node
@@ -18,6 +19,7 @@ def generate_launch_description():
             name='lifecycle_manager_map_server',
             output='screen',
             parameters=[{
+                'use_sim_time': True,
                 'autostart': True,  # This will automatically transition to active
                 'node_names': ['map_server']
             }]

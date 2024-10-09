@@ -6,26 +6,22 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # Path to the AMCL configuration file
-    amcl_config = os.path.join(
-        os.getcwd(),  # Replace with the correct path to your config
-        'src',
-        'dmap_localization',
-        'config',
-        'amcl_config.yaml'
-    )
 
-    # AMCL Node
+    # AMCL Node for Localization
     amcl_node = Node(
         package='nav2_amcl',
         executable='amcl',
         name='amcl',
         output='screen',
-        parameters=[amcl_config],
-        remappings=[
-            ('/map', 'map'),
-        ]
+        parameters=[{
+            'use_sim_time': True,  # Use simulation time
+            'base_frame_id': 'base_footprint',
+            'odom_frame_id': 'odom',
+            'map_frame_id': 'map',
+            'scan_topic': 'scan',
+        }],
     )
+
 
     # Lifecycle manager to automatically activate the amcl node
     amcl_lifecycle_manager = Node(

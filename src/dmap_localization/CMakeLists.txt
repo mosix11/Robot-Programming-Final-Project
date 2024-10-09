@@ -7,16 +7,33 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+
 find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+
+
+include_directories(/usr/include/eigen3)
+include_directories(${PROJECT_SOURCE_DIR}/external/nanoflann/include)
 
 add_executable(dmap_localization_node ${PROJECT_SOURCE_DIR}/src/dmap_localization_node.cpp)
 target_include_directories(dmap_localization_node PUBLIC  ${PROJECT_SOURCE_DIR}/include/)
 
-ament_target_dependencies(dmap_localization_node rclcpp sensor_msgs nav_msgs tf2_ros)
+ament_target_dependencies(dmap_localization_node
+  rclcpp
+  std_msgs
+  nav_msgs
+  sensor_msgs
+  geometry_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+)
 
 install(TARGETS dmap_localization_node DESTINATION lib/${PROJECT_NAME})
 
