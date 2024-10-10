@@ -12,7 +12,6 @@ This is the implementation of the final project for the **Robot Programming 2023
     - [Prerequisites](#prerequisites)
   - [Usage](#usage)
 
-
 ## Overview
 
 In this project I have implemented a Distance Map based localizer uisng the ICP algorithm. In order to test the localizer I have cloned and modified the **Turtlebot3 fake node** form the **turtlebot3_simulations (ros2-devel branch)** ROS package.
@@ -51,13 +50,14 @@ In this project I have implemented a Distance Map based localizer uisng the ICP 
     sudo apt install ros2-humble-turtlebot3* ros2-humble-navigation2
     ```
 
-3. Go to the root directory of the project and run:
+3. Build the project:
 
     ```bash
+    cd Robot-Programming-Final-Project/
     colcon build
     ```
 
-4. Set up the environment by the following commands (you have to do this in 2 seperate terminal windows):
+4. Set up the environment by the following commands (you have to do this in 2 seperate terminal instances):
 
     ```bash
     source install/setup.bash
@@ -70,7 +70,7 @@ In this project I have implemented a Distance Map based localizer uisng the ICP 
     ros2 run dmap_localization dmap_localization_node
     ```
 
-6. Run the simulation node:
+6. Run the simulation node in another terminal instance:
 
     ```bash
     ros2 launch launch/program_launch.py
@@ -84,8 +84,3 @@ In this project I have implemented a Distance Map based localizer uisng the ICP 
     ```
 
 9. Start driving the robot!
-
-
-
-
-

@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 DMapLocalizationNode::DMapLocalizationNode()
     : Node("dmap_localization_node"),
       map_received_(false),
-      occupancy_threshold_(65),
+      occupancy_threshold_(80),
       distance_map_computed_(false),
       initial_pose_received_(false) {
   // Initialize subscribers
@@ -144,27 +144,27 @@ void DMapLocalizationNode::compute_distance_map() {
   RCLCPP_INFO(this->get_logger(),
               "Maximum distance in distance map: %.2f meters", max_distance);
 
-  // Save the distance map to a text file
-  std::ofstream distance_map_file;
-  distance_map_file.open("./distance_map.txt");
+//   // Save the distance map to a text file
+//   std::ofstream distance_map_file;
+//   distance_map_file.open("./distance_map.txt");
 
-  if (distance_map_file.is_open()) {
-    for (int y = 0; y < distance_map_.rows(); ++y) {
-      for (int x = 0; x < distance_map_.cols(); ++x) {
-        distance_map_file << distance_map_(y, x);
+//   if (distance_map_file.is_open()) {
+//     for (int y = 0; y < distance_map_.rows(); ++y) {
+//       for (int x = 0; x < distance_map_.cols(); ++x) {
+//         distance_map_file << distance_map_(y, x);
 
-        if (x < distance_map_.cols() - 1)
-          distance_map_file
-              << ", ";  // Optional: comma separation between columns
-      }
-      distance_map_file << "\n";  // Newline after each row
-    }
-    distance_map_file.close();
-    RCLCPP_INFO(this->get_logger(), "Distance map saved to file.");
-  } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Failed to open file for saving the distance map.");
-  }
+//         if (x < distance_map_.cols() - 1)
+//           distance_map_file
+//               << ", ";  // Optional: comma separation between columns
+//       }
+//       distance_map_file << "\n";  // Newline after each row
+//     }
+//     distance_map_file.close();
+//     RCLCPP_INFO(this->get_logger(), "Distance map saved to file.");
+//   } else {
+//     RCLCPP_ERROR(this->get_logger(),
+//                  "Failed to open file for saving the distance map.");
+//   }
 
   // Prepare the distance map for visualization
   nav_msgs::msg::OccupancyGrid distance_map_msg;

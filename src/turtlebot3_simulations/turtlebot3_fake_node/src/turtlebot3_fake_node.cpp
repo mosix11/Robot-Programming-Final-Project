@@ -25,7 +25,7 @@ using namespace std::chrono_literals;
 Turtlebot3Fake::Turtlebot3Fake()
     : Node("turtlebot3_fake_node"),
       map_received_(false),
-      occupancy_threshold_(65),
+      occupancy_threshold_(80),
       initial_pose_received_(false) {
   /************************************************************
   ** Initialise ROS parameters
