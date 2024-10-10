@@ -1,0 +1,16 @@
+turtlebot3_fake_node:
+  ros__parameters:
+    wheels:
+      separation: 0.160
+      radius: 0.033
+
+    joint_states_frame: "base_footprint"
+    odom_frame: "odom"
+    base_frame: "base_footprint"
+    # added for customization
+    laser:
+      range_min: 0.1
+      range_max: 1.0
+      angle_increment: 0.017453292519943295  # 1 degree in radians
+      frame_id: "base_scan"
+    
