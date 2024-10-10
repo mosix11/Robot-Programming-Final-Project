@@ -47,6 +47,7 @@ private:
     nav_msgs::msg::OccupancyGrid::SharedPtr map_;
     bool map_received_;
     std::mutex map_mutex_;
+    int occupancy_threshold_;
 
     // Distance map
     Eigen::MatrixXf distance_map_;

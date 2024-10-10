@@ -5,12 +5,14 @@
 #include <queue>
 #include <cmath>
 #include <chrono>
+#include <fstream>
 
 using namespace std::chrono_literals;
 
 DMapLocalizationNode::DMapLocalizationNode()
     : Node("dmap_localization_node"),
       map_received_(false),
+      occupancy_threshold_(65),
       distance_map_computed_(false),
       initial_pose_received_(false)
 {
@@ -29,7 +31,7 @@ DMapLocalizationNode::DMapLocalizationNode()
 
     // Initialize publisher
     localization_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/localization_pose", 10);
-    distance_map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("distance_map", 10);
+    distance_map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/distance_map", 10);
 
 
     // Initialize TF broadcaster
@@ -45,7 +47,7 @@ DMapLocalizationNode::~DMapLocalizationNode()
 
 void DMapLocalizationNode::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 {
-    std::lock_guard<std::mutex> lock(map_mutex_);
+    // std::lock_guard<std::mutex> lock(map_mutex_);
     map_ = msg;
     map_received_ = true;
     RCLCPP_INFO(this->get_logger(), "Map received.");
@@ -59,7 +61,7 @@ void DMapLocalizationNode::compute_distance_map()
 
     RCLCPP_INFO(this->get_logger(), "Computing distance map...");
 
-    std::lock_guard<std::mutex> lock(map_mutex_);
+    // std::lock_guard<std::mutex> lock(map_mutex_);
 
     auto width = map_->info.width;
     auto height = map_->info.height;
@@ -67,58 +69,30 @@ void DMapLocalizationNode::compute_distance_map()
     // Initialize the distance map with infinity
     distance_map_ = Eigen::MatrixXf::Constant(height, width, std::numeric_limits<float>::infinity());
 
-    // Create a binary occupancy grid: 0 for free, 1 for occupied
-    Eigen::MatrixXi occupancy_grid(height, width);
-
-    for (size_t y = 0; y < height; ++y)
-    {
-        for (size_t x = 0; x < width; ++x)
-        {
-            int index = x + y * width;
-            int8_t value = map_->data[index];
-
-            if (value == -1)
-            {
-                // Unknown cells; treat them as free or occupied based on your preference
-                // For this implementation, we'll treat them as free space
-                occupancy_grid(y, x) = 0;
-            }
-            else if (value >= 0 && value <= 65)
-            {
-                // Free space
-                occupancy_grid(y, x) = 0;
-            }
-            else
-            {
-                // Occupied space
-                occupancy_grid(y, x) = 1;
-                // Set the distance to 0 for occupied cells
-                distance_map_(y, x) = 0.0f;
-            }
-        }
-    }
-
     // Wavefront propagation using a queue
     std::queue<std::pair<int, int>> wavefront;
 
-    // Initialize the wavefront with obstacle cells (already added in the previous loop)
+    // Initialize the wavefront with obstacle cells (occupied in the occupancy grid)
     for (int y = 0; y < static_cast<int>(height); ++y)
     {
         for (int x = 0; x < static_cast<int>(width); ++x)
         {
-            if (occupancy_grid(y, x) == 1)
+            int index = x + y * width;
+            int8_t value = map_->data[index];
+
+            if (value > occupancy_threshold_)
             {
-                wavefront.push({ x, y });
+                // Occupied space
+                wavefront.push({x, y});
+                distance_map_(y, x) = 0.0f; // Set the distance to 0 for occupied cells
             }
         }
     }
 
-    // Define 4-connected neighborhood
+    // Define 8-connected neighborhood
     std::vector<std::pair<int, int>> neighbors = {
-        { -1,  0 },
-        {  1,  0 },
-        {  0, -1 },
-        {  0,  1 }
+        {-1,  0}, {1,  0}, {0, -1}, {0,  1}, // 4-connected neighbors
+        {-1, -1}, {1,  1}, {-1,  1}, {1, -1} // diagonal neighbors
     };
 
     // Wavefront propagation
@@ -138,8 +112,11 @@ void DMapLocalizationNode::compute_distance_map()
 
             if (nx >= 0 && nx < static_cast<int>(width) && ny >= 0 && ny < static_cast<int>(height))
             {
-                // Only process free cells
-                if (occupancy_grid(ny, nx) == 0)
+                int neighbor_index = nx + ny * width;
+                int8_t neighbor_value = map_->data[neighbor_index];
+
+                // Only process free or unknown cells
+                if (neighbor_value >= -1 && neighbor_value <= occupancy_threshold_)
                 {
                     float neighbor_distance = distance_map_(ny, nx);
                     float new_distance = current_distance + map_->info.resolution;
@@ -147,7 +124,7 @@ void DMapLocalizationNode::compute_distance_map()
                     if (neighbor_distance > new_distance)
                     {
                         distance_map_(ny, nx) = new_distance;
-                        wavefront.push({ nx, ny });
+                        wavefront.push({nx, ny});
                     }
                 }
             }
@@ -160,6 +137,31 @@ void DMapLocalizationNode::compute_distance_map()
     float max_distance = distance_map_.maxCoeff();
 
     RCLCPP_INFO(this->get_logger(), "Maximum distance in distance map: %.2f meters", max_distance);
+
+    // Save the distance map to a text file
+    std::ofstream distance_map_file;
+    distance_map_file.open("./distance_map.txt");
+
+    if (distance_map_file.is_open())
+    {
+        for (int y = 0; y < distance_map_.rows(); ++y)
+        {
+            for (int x = 0; x < distance_map_.cols(); ++x)
+            {
+                distance_map_file << distance_map_(y, x);
+
+                if (x < distance_map_.cols() - 1)
+                    distance_map_file << ", "; // Optional: comma separation between columns
+            }
+            distance_map_file << "\n"; // Newline after each row
+        }
+        distance_map_file.close();
+        RCLCPP_INFO(this->get_logger(), "Distance map saved to file.");
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "Failed to open file for saving the distance map.");
+    }
 
     // Prepare the distance map for visualization
     nav_msgs::msg::OccupancyGrid distance_map_msg;
@@ -198,6 +200,7 @@ void DMapLocalizationNode::compute_distance_map()
 
     RCLCPP_INFO(this->get_logger(), "Distance map computed and published.");
 }
+
 
 
 void DMapLocalizationNode::pose_update_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
