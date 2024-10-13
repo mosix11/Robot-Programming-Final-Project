@@ -16,7 +16,8 @@ DMapLocalizationNode::DMapLocalizationNode()
       map_received_(false),
       occupancy_threshold_(80),
       distance_map_computed_(false),
-      initial_pose_received_(false) {
+      initial_pose_received_(false),
+      reset_odometry_pose_(true) {
   // Initialize subscribers
   map_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
       "/map", 10,
@@ -144,27 +145,27 @@ void DMapLocalizationNode::compute_distance_map() {
   RCLCPP_INFO(this->get_logger(),
               "Maximum distance in distance map: %.2f meters", max_distance);
 
-//   // Save the distance map to a text file
-//   std::ofstream distance_map_file;
-//   distance_map_file.open("./distance_map.txt");
+  //   // Save the distance map to a text file
+  //   std::ofstream distance_map_file;
+  //   distance_map_file.open("./distance_map.txt");
 
-//   if (distance_map_file.is_open()) {
-//     for (int y = 0; y < distance_map_.rows(); ++y) {
-//       for (int x = 0; x < distance_map_.cols(); ++x) {
-//         distance_map_file << distance_map_(y, x);
+  //   if (distance_map_file.is_open()) {
+  //     for (int y = 0; y < distance_map_.rows(); ++y) {
+  //       for (int x = 0; x < distance_map_.cols(); ++x) {
+  //         distance_map_file << distance_map_(y, x);
 
-//         if (x < distance_map_.cols() - 1)
-//           distance_map_file
-//               << ", ";  // Optional: comma separation between columns
-//       }
-//       distance_map_file << "\n";  // Newline after each row
-//     }
-//     distance_map_file.close();
-//     RCLCPP_INFO(this->get_logger(), "Distance map saved to file.");
-//   } else {
-//     RCLCPP_ERROR(this->get_logger(),
-//                  "Failed to open file for saving the distance map.");
-//   }
+  //         if (x < distance_map_.cols() - 1)
+  //           distance_map_file
+  //               << ", ";  // Optional: comma separation between columns
+  //       }
+  //       distance_map_file << "\n";  // Newline after each row
+  //     }
+  //     distance_map_file.close();
+  //     RCLCPP_INFO(this->get_logger(), "Distance map saved to file.");
+  //   } else {
+  //     RCLCPP_ERROR(this->get_logger(),
+  //                  "Failed to open file for saving the distance map.");
+  //   }
 
   // Prepare the distance map for visualization
   nav_msgs::msg::OccupancyGrid distance_map_msg;
@@ -224,23 +225,14 @@ void DMapLocalizationNode::initial_pose_callback(
               current_pose_(0), current_pose_(1), current_pose_(2));
 
   // Reset previous odometry pose
-  previous_odom_ = current_odom_;
+  reset_odometry_pose_ = true;
 
-  // Compute the initial transform between map and odom frames
-  tf2::Transform T_map_robot, T_robot_odom;
-
-  // T_map_robot (from initial pose in map frame)
-  T_map_robot.setOrigin(tf2::Vector3(current_pose_(0), current_pose_(1), 0.0));
-  T_map_robot.setRotation(q_map);
-
-  // T_robot_odom (from current odometry pose)
-  tf2::Quaternion q_odom;
-  q_odom.setRPY(0, 0, current_odom_(2));
-  T_robot_odom.setOrigin(tf2::Vector3(current_odom_(0), current_odom_(1), 0.0));
-  T_robot_odom.setRotation(q_odom);
-
-  // Compute initial map->odom transform
-  T_map_odom_ = T_map_robot * T_robot_odom.inverse();
+  // Set initial map->odom transform
+  // This transform will be published using the TransformBroadcaster
+  // tf_broadcaster and the turtlebot_fake_node3 will use it to know where the
+  // robot is in the map
+  T_map_odom_.setOrigin(tf2::Vector3(current_pose_(0), current_pose_(1), 0.0));
+  T_map_odom_.setRotation(q_map);
 }
 
 /********************************************************************************
@@ -265,11 +257,9 @@ void DMapLocalizationNode::odom_callback(
   current_odom_(1) = y;
   current_odom_(2) = yaw;
 
-  // Initialize previous odometry if first time
-  static bool first_time = true;
-  if (first_time) {
+  if (reset_odometry_pose_) {
     previous_odom_ = current_odom_;
-    first_time = false;
+    reset_odometry_pose_ = false;
   }
 }
 
@@ -277,6 +267,8 @@ void DMapLocalizationNode::odom_callback(
 ** Laser scanner callback
 ********************************************************************************/
 
+// Whenever a new scan from the laser scanner is received we do a new
+// localization step.
 void DMapLocalizationNode::scan_callback(
     const sensor_msgs::msg::LaserScan::SharedPtr msg) {
   if (!distance_map_computed_ || !initial_pose_received_) return;
@@ -288,6 +280,9 @@ void DMapLocalizationNode::scan_callback(
 ** Localization algorithm
 ********************************************************************************/
 
+// The localization process uses the odometry data from the /odom topic
+// alongside the laser scanner data from the /scan topic and the 
+// calculated distance map to localize the robot using ICP algorithm
 void DMapLocalizationNode::perform_localization(
     const sensor_msgs::msg::LaserScan::SharedPtr scan) {
   // Transform current odometry pose into map frame using T_map_odom_
@@ -470,6 +465,30 @@ void DMapLocalizationNode::publish_pose() {
 
   tf_broadcaster_->sendTransform(transformStamped);
 }
+
+/********************************************************************************
+** Helper functions
+********************************************************************************/
+
+void DMapLocalizationNode::logTransform(const tf2::Transform& transform) {
+  // Extract position
+  tf2::Vector3 origin = transform.getOrigin();
+
+  // Extract orientation as RPY (roll, pitch, yaw)
+  tf2::Quaternion rotation = transform.getRotation();
+  double roll, pitch, yaw;
+  tf2::Matrix3x3(rotation).getRPY(roll, pitch,
+                                  yaw);  // Convert quaternion to RPY
+
+  // Log the position (x, y)
+  RCLCPP_INFO(this->get_logger(),
+              "Position: x: %f, y: %f and Orientation: yaw: %f", origin.getX(),
+              origin.getY(), yaw);
+}
+
+/********************************************************************************
+** Main function
+********************************************************************************/
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);

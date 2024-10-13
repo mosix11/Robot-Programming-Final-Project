@@ -9,7 +9,6 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <mutex>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -56,12 +55,14 @@ class DMapLocalizationNode : public rclcpp::Node {
   // Current pose estimate
   Eigen::Vector3f current_pose_;  // x, y, theta
 
+  // Initial pose received flag
+  bool initial_pose_received_;
+
   // Odometry data
+  bool reset_odometry_pose_;
   Eigen::Vector3f current_odom_;
   Eigen::Vector3f previous_odom_;
 
-  // Initial pose received flag
-  bool initial_pose_received_;
 
   // Callback functions
   void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
@@ -70,8 +71,11 @@ class DMapLocalizationNode : public rclcpp::Node {
   void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-  // Helper functions
+  // Localization specific functions
   void compute_distance_map();
   void perform_localization(const sensor_msgs::msg::LaserScan::SharedPtr scan);
   void publish_pose();
+
+  // Helper functions
+  void logTransform(const tf2::Transform& transform);
 };
