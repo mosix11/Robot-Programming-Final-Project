@@ -101,7 +101,7 @@ void DMapLocalizationNode::compute_distance_map() {
 
   // Define 8-connected neighborhood
   std::vector<std::pair<int, int>> neighbors = {
-      {-1, 0},  {1, 0}, {0, -1}, {0, 1},  // 4-connected neighbors
+      {-1, 0},  {1, 0}, {0, -1}, {0, 1},  // 8-connected neighbors
       {-1, -1}, {1, 1}, {-1, 1}, {1, -1}  // diagonal neighbors
   };
 
@@ -121,9 +121,11 @@ void DMapLocalizationNode::compute_distance_map() {
       if (nx >= 0 && nx < static_cast<int>(width) && ny >= 0 &&
           ny < static_cast<int>(height)) {
         int neighbor_index = nx + ny * width;
-        int8_t neighbor_value = map_->data[neighbor_index];
+        int8_t neighbor_value =
+            map_->data[neighbor_index];  // Retreiving the value of the neighbor
+                                         // from the occupancy grid
 
-        // Only process free or unknown cells
+        // We check to see if the neighbor is not occupied
         if (neighbor_value >= -1 && neighbor_value <= occupancy_threshold_) {
           float neighbor_distance = distance_map_(ny, nx);
           float new_distance = current_distance + map_->info.resolution;
@@ -281,7 +283,7 @@ void DMapLocalizationNode::scan_callback(
 ********************************************************************************/
 
 // The localization process uses the odometry data from the /odom topic
-// alongside the laser scanner data from the /scan topic and the 
+// alongside the laser scanner data from the /scan topic and the
 // calculated distance map to localize the robot using ICP algorithm
 void DMapLocalizationNode::perform_localization(
     const sensor_msgs::msg::LaserScan::SharedPtr scan) {
@@ -305,15 +307,15 @@ void DMapLocalizationNode::perform_localization(
   initial_guess(0) = position.x();
   initial_guess(1) = position.y();
   initial_guess(2) = yaw;
+
   // Build point cloud from laser scan
   std::vector<Eigen::Vector2f> scan_points;
-
   float angle = scan->angle_min;
-
+  // We build a vector containing the coordinates (x and y) of the laser rays in
+  // the laser frame containing only rays which hit an obstacle.
   for (size_t i = 0; i < scan->ranges.size(); ++i) {
     float r = scan->ranges[i];
     if (std::isfinite(r) && r >= scan->range_min && r <= scan->range_max) {
-      // Laser point in laser frame
       Eigen::Vector2f point_laser(r * std::cos(angle), r * std::sin(angle));
       scan_points.push_back(point_laser);
     }
@@ -326,7 +328,6 @@ void DMapLocalizationNode::perform_localization(
 
   Eigen::Vector3f pose_estimate = initial_guess;
 
-  // ICP optimization loop
   for (int iter = 0; iter < max_iterations; ++iter) {
     // Prepare Hessian and gradient
     Eigen::MatrixXf H = Eigen::MatrixXf::Zero(3, 3);
@@ -335,15 +336,17 @@ void DMapLocalizationNode::perform_localization(
     float total_error = 0.0f;
 
     for (const auto& point_laser : scan_points) {
-      // Transform point to world frame using current pose estimate
+      // Using the current estimation of the robot's pose in the world(map)
+      // coordinate we transform the laser points coordinates from laser frame
+      // to the world(map) frame
       float cos_theta = std::cos(pose_estimate(2));
       float sin_theta = std::sin(pose_estimate(2));
-
       Eigen::Vector2f point_world;
       point_world(0) = pose_estimate(0) + cos_theta * point_laser(0) -
                        sin_theta * point_laser(1);
       point_world(1) = pose_estimate(1) + sin_theta * point_laser(0) +
                        cos_theta * point_laser(1);
+
       // Convert world coordinates to map indices
       int map_x =
           static_cast<int>((point_world(0) - map_->info.origin.position.x) /
