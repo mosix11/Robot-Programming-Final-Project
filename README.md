@@ -1,4 +1,4 @@
-# Robot Programming Final Project
+# D-MAP Localizer Using ICP
 
 This is the implementation of the final project for the **Robot Programming 2023/2024** course at **Sapienza University of Rome**. The project is developed using **ROS 2 Humble** and **C++** on **Ubuntu 22.04**.
 
